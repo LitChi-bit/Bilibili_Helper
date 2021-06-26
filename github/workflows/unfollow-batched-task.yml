@@ -1,0 +1,87 @@
+# 批量取关
+
+name: unfollow-batched-task
+
+on:
+  workflow_dispatch: # 手动触发
+    inputs:
+      group:
+        description: '分组名称'
+        required: true
+      count:
+        description: '目标取关个数（-1表示全部）'
+        required: true
+
+env:
+  ASPNETCORE_ENVIRONMENT: ${{secrets.ENV}} # 运行环境
+  Ray_CloseConsoleWhenEnd: 1
+  Ray_BiliBiliCookie__CookieStr: ${{secrets.COOKIESTR}}
+  # 推送：
+  Ray_Serilog__WriteTo__3__Args__botToken: ${{secrets.PUSHTGTOKEN}} # Telegram
+  Ray_Serilog__WriteTo__3__Args__chatId: ${{secrets.PUSHTGCHATID}}
+  Ray_Serilog__WriteTo__3__Args__restrictedToMinimumLevel: ${{secrets.PUSHTGLEVEL}}
+  Ray_Serilog__WriteTo__4__Args__webHookUrl: ${{secrets.PUSHWEIXINURL}} # 企业微信
+  Ray_Serilog__WriteTo__4__Args__restrictedToMinimumLevel: ${{secrets.PUSHWEIXINLEVEL}}
+  Ray_Serilog__WriteTo__5__Args__webHookUrl: ${{secrets.PUSHDINGURL}} # 钉钉
+  Ray_Serilog__WriteTo__5__Args__restrictedToMinimumLevel: ${{secrets.PUSHDINGLEVEL}}
+  Ray_Serilog__WriteTo__6__Args__scKey: ${{secrets.PUSHSCKEY}} # Server酱
+  Ray_Serilog__WriteTo__6__Args__turboScKey: ${{secrets.PUSHSERVERTSCKEY}}
+  Ray_Serilog__WriteTo__6__Args__restrictedToMinimumLevel: ${{secrets.PUSHSERVERLEVEL}}
+  Ray_Serilog__WriteTo__7__Args__sKey: ${{secrets.PUSHCOOLSKEY}} # 酷推
+  Ray_Serilog__WriteTo__7__Args__restrictedToMinimumLevel: ${{secrets.PUSHCOOLLEVEL}}
+  Ray_Serilog__WriteTo__8__Args__api: ${{secrets.PUSHOTHERAPI}} # 自定义api
+  Ray_Serilog__WriteTo__8__Args__placeholder: ${{secrets.PUSHOTHERPLACEHOLDER}}
+  Ray_Serilog__WriteTo__8__Args__bodyJsonTemplate: ${{secrets.PUSHOTHERBODYJSONTEMPLATE}}
+  Ray_Serilog__WriteTo__8__Args__restrictedToMinimumLevel: ${{secrets.PUSHOTHERLEVEL}}
+  Ray_Serilog__WriteTo__9__Args__token: ${{secrets.PUSHPLUSTOKEN}} # PushPlus
+  Ray_Serilog__WriteTo__9__Args__topic: ${{secrets.PUSHPLUSTOPIC}}
+  Ray_Serilog__WriteTo__9__Args__channel: ${{secrets.PUSHPLUSCHANNEL}}
+  Ray_Serilog__WriteTo__9__Args__webhook: ${{secrets.PUSHPLUSWEBHOOK}}
+  Ray_Serilog__WriteTo__9__Args__restrictedToMinimumLevel: ${{secrets.PUSHPLUSLEVEL}}
+  # 安全相关：
+  Ray_Security__IsSkipDailyTask: ${{secrets.ISSKIPDAILYTASK}}
+  Ray_Security__IntervalSecondsBetweenRequestApi: ${{secrets.INTERVALSECONDSBETWEENREQUESTAPI}}
+  Ray_Security__IntervalMethodTypes: ${{secrets.INTERVALMETHODTYPES}}
+  Ray_Security__UserAgent: ${{secrets.USERAGENT}}
+  Ray_Security__WebProxy: ${{secrets.WEBPROXY}}
+  Ray_Security__RandomSleepMaxMin: ${{secrets.RANDOMSLEEPMAXMIN}}
+  # 批量取关任务：
+  Ray_UnfollowBatchedTaskConfig__GroupName: ${{ github.event.inputs.group }}
+  Ray_UnfollowBatchedTaskConfig__Count: ${{ github.event.inputs.count }}
+
+jobs:
+  run-task:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+    # 输出IP
+    - name: IP
+      run: sudo curl ifconfig.me
+
+    # 设置服务器时区为东八区 
+    - name: Set time zone
+      run: sudo timedatectl set-timezone 'Asia/Shanghai'
+
+    # 检出
+    - name: Checkout
+      uses: actions/checkout@v2
+      
+    # .Net 环境
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 5.0.x
+
+    # 发布
+    - name: Publish
+      run: |
+        cd ./src/Ray.BiliBiliTool.Console
+        dotnet publish --configuration Release --self-contained false --output ./bin/Publish/net5-dependent
+       
+    # 运行
+    - name: Run APP
+      run: |
+        cd ./src/Ray.BiliBiliTool.Console/bin/Publish/net5-dependent
+        dotnet Ray.BiliBiliTool.Console.dll -runTasks=UnfollowBatched
